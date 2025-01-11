@@ -107,7 +107,7 @@ jobs:
       - name: Check what needs to be done
         id: need
         env:
-          PUSH_DOCKER_IMAGE: ${{ github.event_name == "push" && github.ref_name == "main" }}
+          PUSH_DOCKER_IMAGE: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
         run: |
           echo "push_docker_image=$PUSH_DOCKER_IMAGE" >> $GITHUB_OUTPUT
 
