@@ -118,6 +118,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # set latest tag for default branch
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Log in to the Container registry
         if: ${{ fromJSON(steps.need.outputs.push_docker_image) }}
