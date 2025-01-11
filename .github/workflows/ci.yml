@@ -86,6 +86,8 @@ jobs:
   docker:
 
     name: Docker
+    needs:
+      - unit-test
     runs-on: ubuntu-latest
 
     permissions:
