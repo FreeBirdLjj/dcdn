@@ -110,19 +110,28 @@ func sniffTLSServerName(rc io.Reader) (serverName string, err error) {
 		s.ReadUint16LengthPrefixed(&extensions)
 
 		for !extensions.Empty() {
-			var extension uint16
-			var extData cryptobyte.String
+
+			var (
+				extension uint16
+				extData   cryptobyte.String
+			)
+
 			extensions.ReadUint16(&extension)
 			extensions.ReadUint16LengthPrefixed(&extData)
 
 			if extension == ExtensionServerName {
+
 				// RFC 6066, Section 3
 				var nameList cryptobyte.String
 				extData.ReadUint16LengthPrefixed(&nameList)
 
 				for !nameList.Empty() {
-					var nameType uint8
-					var serverName cryptobyte.String
+
+					var (
+						nameType   uint8
+						serverName cryptobyte.String
+					)
+
 					nameList.ReadUint8(&nameType)
 					nameList.ReadUint16LengthPrefixed(&serverName)
 
