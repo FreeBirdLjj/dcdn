@@ -7,7 +7,7 @@ For example, =aiohttp= doesn't read proxy environment variables by default, so a
 
 ** Docker Compose
 
-The simplest way to use `dcdn` is to deploy it and the desired application together using Docker Compose.
+The simplest way to use =dcdn= is to deploy it and the desired application together using Docker Compose.
 
 There are only two things that need to be done:
 1. Add =dcdn= service with proper =all_proxy= setting and ports 80 and 443 exposed
