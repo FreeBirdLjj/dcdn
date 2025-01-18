@@ -1,1 +1,36 @@
 #+TITLE: dcdn
+
+=dcdn= is aimed to add proxy environment variable support to applications that do not have it.
+For example, =aiohttp= doesn't read proxy environment variables by default, so applications based on it like Home Assistant may also lack this support.
+
+* Get started
+
+** Docker Compose
+
+The simplest way to use `dcdn` is to deploy it and the desired application together using Docker Compose.
+
+There are only two things that need to be done:
+1. Add =dcdn= service with proper =all_proxy= setting and ports 80 and 443 exposed
+2. Link =dcdn= to the desired service(s) with specific domains as aliases
+
+Here's an example =compose.yaml=:
+
+#+BEGIN_SRC yaml
+services:
+  dcdn:
+    image: ghcr.io/freebirdljj/dcdn:latest
+    environment:
+      - all_proxy=${ALL_PROXY}
+    expose:
+      - "80"
+      - "443"
+
+  app:
+    ...
+    links:
+      - dcdn:domain1
+      - dcdn:domain2
+      ...
+#+END_SRC
+
+Here the domains used as the =dcdn= aliases can be public domains such as =github.com=.
