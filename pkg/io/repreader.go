@@ -1,24 +1,27 @@
 package io
 
 import (
+	"container/heap"
 	"io"
-	"slices"
 	"sync"
 )
 
 type (
 	replicateReaderManager struct {
 		l          sync.Locker
-		readers    []*replicateReader
+		readers    readerPriorityQueue
 		buf        []byte
 		base       int
 		r          io.Reader
 		alreadyEOF bool
 	}
 
+	readerPriorityQueue []*replicateReader
+
 	replicateReader struct {
 		manager *replicateReaderManager
 		offset  int
+		index   int
 	}
 )
 
@@ -34,24 +37,56 @@ func (repReaderManager *replicateReaderManager) readFromReader(p []byte, skipCop
 	return n, err
 }
 
+func (repReaderManager *replicateReaderManager) leastOffset() int {
+	return repReaderManager.readers[0].offset
+}
+
 func (repReaderManager *replicateReaderManager) furthestOffset() int {
 	return repReaderManager.base + len(repReaderManager.buf)
 }
 
 func (repReaderManager *replicateReaderManager) moveIfNeeded() {
-	if repReaderManager.base+repReaderManager.furthestOffset() < repReaderManager.readers[0].offset*2 {
-		start := repReaderManager.readers[0].offset - repReaderManager.base
+	if repReaderManager.base+repReaderManager.furthestOffset() < repReaderManager.leastOffset()*2 {
+		start := repReaderManager.leastOffset() - repReaderManager.base
 		cnt := copy(repReaderManager.buf, repReaderManager.buf[start:])
 		repReaderManager.buf = repReaderManager.buf[:cnt]
-		repReaderManager.base = repReaderManager.readers[0].offset
+		repReaderManager.base = repReaderManager.leastOffset()
 	}
+}
+
+func (readers readerPriorityQueue) Len() int {
+	return len(readers)
+}
+
+func (readers readerPriorityQueue) Less(i int, j int) bool {
+	return readers[i].offset < readers[j].offset
+}
+
+func (readers readerPriorityQueue) Swap(i int, j int) {
+	readers[i], readers[j] = readers[j], readers[i]
+	readers[i].index = i
+	readers[j].index = j
+}
+
+func (readers *readerPriorityQueue) Push(x any) {
+	repReader := x.(*replicateReader)
+	repReader.index = readers.Len()
+	*readers = append(*readers, repReader)
+}
+
+func (readers *readerPriorityQueue) Pop() any {
+	n := readers.Len()
+	old := *readers
+	repReader := old[n-1]
+	old[n-1] = nil       // don't stop the GC from reclaiming the item eventually
+	repReader.index = -1 // for safety
+	*readers = old[0 : n-1]
+	return repReader
 }
 
 func (repReader *replicateReader) advanceOffset(n int) {
 	repReader.offset += n
-	slices.SortFunc(repReader.manager.readers, func(l *replicateReader, r *replicateReader) int {
-		return l.offset - r.offset
-	})
+	heap.Fix(&repReader.manager.readers, repReader.index)
 }
 
 func (repReader *replicateReader) readFromBuf(p []byte) int {
@@ -89,10 +124,7 @@ func (repReader *replicateReader) Close() error {
 	repReader.manager.l.Lock()
 	defer repReader.manager.l.Unlock()
 
-	repReader.manager.readers = slices.DeleteFunc(repReader.manager.readers, func(reader *replicateReader) bool {
-		return reader == repReader
-	})
-
+	heap.Remove(&repReader.manager.readers, repReader.index)
 	return nil
 }
 
@@ -112,6 +144,7 @@ func ReplicateReader(r io.Reader, n int) []io.ReadCloser {
 		manager.readers[i] = &replicateReader{
 			manager: &manager,
 			offset:  0,
+			index:   i,
 		}
 		readers[i] = manager.readers[i]
 	}
