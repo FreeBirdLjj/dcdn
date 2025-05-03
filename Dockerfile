@@ -1,14 +1,9 @@
-FROM golang:1.24 AS builder
-
-WORKDIR /app/src
-
-RUN --mount=type=bind,target=. \
-    CGO_ENABLED=0 go build -o /app/bin/ ./cmd/...
-
 FROM scratch
+
+ARG TARGETPLATFORM
 
 WORKDIR /app
 
-COPY --from=builder /app/bin .
+ADD release/${TARGETPLATFORM}.tar /app/
 
 ENTRYPOINT ["/app/dcdn"]
