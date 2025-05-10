@@ -63,7 +63,7 @@ func SniffHostAndForward(sniffer func(incomingData io.Reader) (hostname string, 
 	}()
 
 	err = <-errCh
-	if err != nil && err != io.EOF {
+	if err != nil {
 		logger.Errorf("failed to transport: %v", err)
 		return
 	}
