@@ -17,7 +17,7 @@ jobs:
         data:
           - # shared matrix starts here:
             go-version:
-              - "1.24"
+              - "1.25"
     outputs:
       matrix: ${{ toJSON(matrix.data) }}
 
@@ -98,7 +98,7 @@ jobs:
 
     env:
       REGISTRY: ghcr.io
-      RELEASE_GO_VERSION: "1.24"
+      RELEASE_GO_VERSION: "1.25"
 
     steps:
       - uses: actions/checkout@v6
