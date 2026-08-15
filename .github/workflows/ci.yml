@@ -8,85 +8,47 @@ permissions:
   contents: read
 
 jobs:
-  set-matrix:
-
-    name: set matrix
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        data:
-          - # shared matrix starts here:
-            go-version:
-              - "1.25"
-    outputs:
-      matrix: ${{ toJSON(matrix.data) }}
-
-    steps:
-      # `steps` cannot be empty if the job's `uses` is not set
-      - run: true
-
   format:
 
     name: format
-    needs:
-      - set-matrix
     runs-on: ubuntu-latest
-    strategy:
-      matrix: ${{ fromJSON(needs.set-matrix.outputs.matrix) }}
 
     steps:
     - uses: actions/checkout@v7
 
-    - name: Set up Go ${{ matrix.go-version }}
-      uses: actions/setup-go@v7
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
       with:
-        go-version: ${{ matrix.go-version }}
+        components: rustfmt, clippy
 
-    - name: Format
-      run: go fmt ./...
+    - name: Format check
+      run: cargo fmt --check
 
-    - name: Fix
-      run: go fix ./...
-
-    - name: Vet
-      run: go vet ./...
-
-    - name: Check changes
-      run: git diff-index --quiet HEAD
+    - name: Clippy
+      run: cargo clippy --all-targets -- -D warnings
 
   unit-test:
 
     name: unit test
-    needs:
-      - set-matrix
     runs-on: ubuntu-latest
-    strategy:
-      matrix: ${{ fromJSON(needs.set-matrix.outputs.matrix) }}
 
     steps:
       - uses: actions/checkout@v7
 
-      - name: Set up Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v7
-        with:
-          go-version: ${{ matrix.go-version }}
-
-      - name: Display Go version
-        run: go version
-
-      - name: Install dependencies
-        run: go get ./...
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Build
-        run: go build -v ./...
+        run: cargo build
 
       - name: Test
-        run: go test -race -v ./...
+        run: cargo test
 
   docker:
 
     name: Docker
     needs:
+      - format
       - unit-test
     runs-on: ubuntu-latest
 
@@ -98,28 +60,9 @@ jobs:
 
     env:
       REGISTRY: ghcr.io
-      RELEASE_GO_VERSION: "1.25"
 
     steps:
       - uses: actions/checkout@v7
-
-      - name: Set up Go ${{ env.RELEASE_GO_VERSION }}
-        uses: actions/setup-go@v7
-        with:
-          go-version: ${{ env.RELEASE_GO_VERSION }}
-
-      - name: Build
-        run: |
-          mkdir -p release/linux
-          # For simplicity, currently only consider archs for which `TARGETVARIANT` is empty.
-          for ARCH in amd64 arm64
-          do
-              CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} go build -o bin/ ./cmd/...
-              cd bin
-              tar cf ../release/linux/${ARCH}.tar .
-              cd ..
-              rm -r bin
-          done
 
       - name: Set image name
         run: |
