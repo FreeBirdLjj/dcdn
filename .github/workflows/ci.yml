@@ -86,7 +86,7 @@ jobs:
 
       - name: Log in to the Container registry
         if: ${{ fromJSON(steps.need.outputs.push_docker_image) }}
-        uses: docker/login-action@v4.6.0
+        uses: docker/login-action@v4.7.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
